@@ -35,7 +35,7 @@
     color-space="sRGB" 
     renderer="colorManagement: true, physicallyCorrectLights: true" 
     vr-mode-ui="enabled: false" 
-   mindar-image="imageTargetSrc: ./card-target.mind;"
+    device-orientation-permission-ui="enabled: false">
 
     <a-assets>
       <a-asset-item id="elf" src="./elf-model.glb"></a-asset-item>
@@ -68,8 +68,30 @@
       recognition.onresult = (event) => {
         const text = event.results[0][0].transcript;
         micBtn.innerText = '🎙️ Talk to Elf';
-        const utterance = new SpeechSynthesisUtterance("Hello! You said: " + text);
-        utterance.pitch = 1.4;
+
+        // Clever elf responses based on spoken keywords
+        let reply = "Fascinating observation! You mentioned: " + text;
+        const lowerText = text.toLowerCase();
+
+        if (lowerText.includes('hello') || lowerText.includes('hi')) {
+          reply = "Greetings! I'm hard at work running complex magic calculations. What's on your mind?";
+        } else if (lowerText.includes('who are you') || lowerText.includes('name')) {
+          reply = "I'm the resident North Pole engineer! Part magic, part high-tech ingenuity.";
+        } else if (lowerText.includes('magic') || lowerText.includes('spell')) {
+          reply = "Magic isn't just mystery, my friend—it's advanced quantum mechanics wrapped in holiday cheer!";
+        }
+
+        const utterance = new SpeechSynthesisUtterance(reply);
+        
+        // Voice adjustments for high-pitched, quick-talking elf sound
+        utterance.pitch = 1.8; // Higher pitch for elf voice
+        utterance.rate = 1.25;  // Slightly faster speech speed
+
+        // Choose a natural English voice if available
+        const voices = window.speechSynthesis.getVoices();
+        const preferredVoice = voices.find(v => v.lang.startsWith('en') && !v.name.includes('Compact'));
+        if (preferredVoice) utterance.voice = preferredVoice;
+
         window.speechSynthesis.speak(utterance);
       };
 
