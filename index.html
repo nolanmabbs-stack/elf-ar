@@ -8,6 +8,21 @@
   <script src="https://cdn.jsdelivr.net/gh/donmccurdy/aframe-extras@v7.0.0/dist/aframe-extras.min.js"></script>
   <style>
     body { margin: 0; overflow: hidden; }
+    
+    /* Red dot indicator in top-left to confirm code update */
+    #status-dot {
+      position: absolute;
+      top: 15px;
+      left: 15px;
+      width: 16px;
+      height: 16px;
+      background-color: #ff0000;
+      border-radius: 50%;
+      border: 2px solid white;
+      z-index: 1000;
+      box-shadow: 0 0 6px rgba(0,0,0,0.4);
+    }
+
     #mic-btn {
       position: absolute;
       bottom: 30px;
@@ -27,6 +42,9 @@
   </style>
 </head>
 <body>
+
+  <!-- Status indicator dot -->
+  <div id="status-dot"></div>
 
   <button id="mic-btn">🎙️ Talk to Elf</button>
 
@@ -59,17 +77,42 @@
     const micBtn = document.getElementById('mic-btn');
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
+    // Load web speech voices for mobile devices
+    let voices = [];
+    function loadVoices() {
+      voices = window.speechSynthesis.getVoices();
+    }
+    loadVoices();
+    if (speechSynthesis.onvoiceschanged !== undefined) {
+      speechSynthesis.onvoiceschanged = loadVoices;
+    }
+
+    function speakElf(text) {
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.pitch = 1.8; // High elf pitch
+      utterance.rate = 1.25;  // Energetic speed
+
+      if (voices.length > 0) {
+        const preferredVoice = voices.find(v => v.lang.startsWith('en') && !v.name.includes('Compact'));
+        if (preferredVoice) utterance.voice = preferredVoice;
+      }
+
+      window.speechSynthesis.speak(utterance);
+    }
+
     if (SpeechRecognition) {
       const recognition = new SpeechRecognition();
       recognition.lang = 'en-US';
 
-      recognition.onstart = () => { micBtn.innerText = 'Listening...'; };
+      recognition.onstart = () => { 
+        micBtn.innerText = 'Listening...'; 
+      };
       
       recognition.onresult = (event) => {
         const text = event.results[0][0].transcript;
         micBtn.innerText = '🎙️ Talk to Elf';
 
-        // Clever elf responses based on spoken keywords
         let reply = "Fascinating observation! You mentioned: " + text;
         const lowerText = text.toLowerCase();
 
@@ -81,23 +124,17 @@
           reply = "Magic isn't just mystery, my friend—it's advanced quantum mechanics wrapped in holiday cheer!";
         }
 
-        const utterance = new SpeechSynthesisUtterance(reply);
-        
-        // Voice adjustments for high-pitched, quick-talking elf sound
-        utterance.pitch = 1.8; // Higher pitch for elf voice
-        utterance.rate = 1.25;  // Slightly faster speech speed
-
-        // Choose a natural English voice if available
-        const voices = window.speechSynthesis.getVoices();
-        const preferredVoice = voices.find(v => v.lang.startsWith('en') && !v.name.includes('Compact'));
-        if (preferredVoice) utterance.voice = preferredVoice;
-
-        window.speechSynthesis.speak(utterance);
+        speakElf(reply);
       };
 
-      recognition.onerror = () => { micBtn.innerText = '🎙️ Talk to Elf'; };
+      recognition.onerror = () => { 
+        micBtn.innerText = '🎙️ Talk to Elf';
+      };
 
-      micBtn.addEventListener('click', () => { recognition.start(); });
+      micBtn.addEventListener('click', () => { 
+        speakElf(""); // Unlocks speech audio context on mobile tap
+        recognition.start(); 
+      });
     } else {
       micBtn.innerText = 'Voice API Not Supported';
     }
