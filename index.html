@@ -9,7 +9,6 @@
   <style>
     body { margin: 0; overflow: hidden; }
     
-    /* Red dot indicator in top-left to confirm code update */
     #status-dot {
       position: absolute;
       top: 15px;
@@ -43,13 +42,12 @@
 </head>
 <body>
 
-  <!-- Status indicator dot -->
   <div id="status-dot"></div>
 
   <button id="mic-btn">🎙️ Talk to Elf</button>
 
   <a-scene 
-    mindar-image="imageTargetSrc: ./card-target.mind;" 
+    mindar-image="imageTargetSrc: ./card-target.mind; filterMinCF: 0.0001; filterBeta: 0.001; missTolerance: 10;" 
     color-space="sRGB" 
     renderer="colorManagement: true, physicallyCorrectLights: true" 
     vr-mode-ui="enabled: false" 
@@ -77,7 +75,6 @@
     const micBtn = document.getElementById('mic-btn');
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
-    // Load web speech voices for mobile devices
     let voices = [];
     function loadVoices() {
       voices = window.speechSynthesis.getVoices();
@@ -89,16 +86,39 @@
 
     function speakElf(text) {
       window.speechSynthesis.cancel();
+      if (!text) return;
+
       const utterance = new SpeechSynthesisUtterance(text);
-      utterance.pitch = 1.8; // High elf pitch
-      utterance.rate = 1.25;  // Energetic speed
+      utterance.pitch = 1.6; // Slightly adjusted pitch for clarity
+      utterance.rate = 1.1;   // Natural elf speed
 
       if (voices.length > 0) {
-        const preferredVoice = voices.find(v => v.lang.startsWith('en') && !v.name.includes('Compact'));
+        // Pick the best available English voice
+        const preferredVoice = voices.find(v => (v.lang.startsWith('en') || v.lang.startsWith('en-GB')) && !v.name.includes('Compact')) || voices[0];
         if (preferredVoice) utterance.voice = preferredVoice;
       }
 
       window.speechSynthesis.speak(utterance);
+    }
+
+    // Smart answer engine for general questions
+    function getSmartElfResponse(question) {
+      const q = question.toLowerCase();
+
+      if (q.includes('hello') || q.includes('hi') || q.includes('hey')) {
+        return "Greetings! What high-tech workshop calculations can I help you with today?";
+      }
+      if (q.includes('who are you') || q.includes('your name')) {
+        return "I'm the chief engineering elf! I handle magic, tech, and North Pole innovation.";
+      }
+      if (q.includes('santa') || q.includes('christmas')) {
+        return "Santa's workshop is running at peak efficiency! All systems are go.";
+      }
+      if (q.includes('why') || q.includes('how') || q.includes('what') || q.includes('can you')) {
+        return "That's a clever question! According to my North Pole database, " + question + " involves some pretty advanced magic and logic!";
+      }
+      
+      return "Fascinating question! As an elf scientist, I'd say " + question + " is definitely worth investigating!";
     }
 
     if (SpeechRecognition) {
@@ -113,17 +133,7 @@
         const text = event.results[0][0].transcript;
         micBtn.innerText = '🎙️ Talk to Elf';
 
-        let reply = "Fascinating observation! You mentioned: " + text;
-        const lowerText = text.toLowerCase();
-
-        if (lowerText.includes('hello') || lowerText.includes('hi')) {
-          reply = "Greetings! I'm hard at work running complex magic calculations. What's on your mind?";
-        } else if (lowerText.includes('who are you') || lowerText.includes('name')) {
-          reply = "I'm the resident North Pole engineer! Part magic, part high-tech ingenuity.";
-        } else if (lowerText.includes('magic') || lowerText.includes('spell')) {
-          reply = "Magic isn't just mystery, my friend—it's advanced quantum mechanics wrapped in holiday cheer!";
-        }
-
+        const reply = getSmartElfResponse(text);
         speakElf(reply);
       };
 
@@ -132,7 +142,7 @@
       };
 
       micBtn.addEventListener('click', () => { 
-        speakElf(""); // Unlocks speech audio context on mobile tap
+        speakElf(""); // Unlock web audio context
         recognition.start(); 
       });
     } else {
