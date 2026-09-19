@@ -47,7 +47,7 @@
   <button id="mic-btn">🎙️ Talk to Elf</button>
 
   <a-scene 
-    mindar-image="imageTargetSrc: ./card-target.mind; filterMinCF: 0.0001; filterBeta: 0.001; missTolerance: 10;" 
+    mindar-image="imageTargetSrc: ./card-target.mind; autoStart: true; uiLoading: no; uiError: no;" 
     color-space="sRGB" 
     renderer="colorManagement: true, physicallyCorrectLights: true" 
     vr-mode-ui="enabled: false" 
@@ -62,8 +62,8 @@
     <a-entity mindar-image-target="targetIndex: 0">
       <a-gltf-model 
         src="#elf" 
-        position="0 0 0" 
-        scale="0.5 0.5 0.5" 
+        position="0 -0.2 0" 
+        scale="0.6 0.6 0.6" 
         rotation="0 0 0" 
         animation-mixer="clip: *; loop: repeat">
       </a-gltf-model>
@@ -89,11 +89,10 @@
       if (!text) return;
 
       const utterance = new SpeechSynthesisUtterance(text);
-      utterance.pitch = 1.6; // Slightly adjusted pitch for clarity
-      utterance.rate = 1.1;   // Natural elf speed
+      utterance.pitch = 1.6;
+      utterance.rate = 1.1;
 
       if (voices.length > 0) {
-        // Pick the best available English voice
         const preferredVoice = voices.find(v => (v.lang.startsWith('en') || v.lang.startsWith('en-GB')) && !v.name.includes('Compact')) || voices[0];
         if (preferredVoice) utterance.voice = preferredVoice;
       }
@@ -101,7 +100,6 @@
       window.speechSynthesis.speak(utterance);
     }
 
-    // Smart answer engine for general questions
     function getSmartElfResponse(question) {
       const q = question.toLowerCase();
 
@@ -109,13 +107,13 @@
         return "Greetings! What high-tech workshop calculations can I help you with today?";
       }
       if (q.includes('who are you') || q.includes('your name')) {
-        return "I'm the chief engineering elf! I handle magic, tech, and North Pole innovation.";
+        return "I'm the resident North Pole engineer! Part magic, part high-tech ingenuity.";
       }
       if (q.includes('santa') || q.includes('christmas')) {
         return "Santa's workshop is running at peak efficiency! All systems are go.";
       }
       if (q.includes('why') || q.includes('how') || q.includes('what') || q.includes('can you')) {
-        return "That's a clever question! According to my North Pole database, " + question + " involves some pretty advanced magic and logic!";
+        return "That's a clever question! According to my North Pole calculations, " + question + " involves some fascinating magic and logic!";
       }
       
       return "Fascinating question! As an elf scientist, I'd say " + question + " is definitely worth investigating!";
@@ -142,7 +140,7 @@
       };
 
       micBtn.addEventListener('click', () => { 
-        speakElf(""); // Unlock web audio context
+        speakElf("");
         recognition.start(); 
       });
     } else {
