@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Elf AR Experience</title>
+  <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/donmccurdy/aframe-extras@v7.0.0/dist/aframe-extras.min.js"></script>
+  <style>
+    body { margin: 0; overflow: hidden; }
+    #mic-btn {
+      position: absolute;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 1000;
+      padding: 14px 28px;
+      font-size: 18px;
+      font-weight: bold;
+      color: white;
+      background-color: #008cba;
+      border: none;
+      border-radius: 50px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+  <button id="mic-btn">🎙️ Talk to Elf</button>
+
+  <a-scene 
+    mindar-image="imageTargetSrc: ./card-target.mind;" 
+    color-space="sRGB" 
+    renderer="colorManagement: true, physicallyCorrectLights: true" 
+    vr-mode-ui="enabled: false" 
+   mindar-image="imageTargetSrc: ./card-target.mind;"
+
+    <a-assets>
+      <a-asset-item id="elf" src="./elf-model.glb"></a-asset-item>
+    </a-assets>
+
+    <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+
+    <a-entity mindar-image-target="targetIndex: 0">
+      <a-gltf-model 
+        src="#elf" 
+        position="0 0 0" 
+        scale="0.5 0.5 0.5" 
+        rotation="0 0 0" 
+        animation-mixer="clip: *; loop: repeat">
+      </a-gltf-model>
+    </a-entity>
+
+  </a-scene>
+
+  <script>
+    const micBtn = document.getElementById('mic-btn');
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    if (SpeechRecognition) {
+      const recognition = new SpeechRecognition();
+      recognition.lang = 'en-US';
+
+      recognition.onstart = () => { micBtn.innerText = 'Listening...'; };
+      
+      recognition.onresult = (event) => {
+        const text = event.results[0][0].transcript;
+        micBtn.innerText = '🎙️ Talk to Elf';
+        const utterance = new SpeechSynthesisUtterance("Hello! You said: " + text);
+        utterance.pitch = 1.4;
+        window.speechSynthesis.speak(utterance);
+      };
+
+      recognition.onerror = () => { micBtn.innerText = '🎙️ Talk to Elf'; };
+
+      micBtn.addEventListener('click', () => { recognition.start(); });
+    } else {
+      micBtn.innerText = 'Voice API Not Supported';
+    }
+  </script>
+</body>
+</html>
