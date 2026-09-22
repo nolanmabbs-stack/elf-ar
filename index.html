@@ -8,19 +8,6 @@
   <script src="https://cdn.jsdelivr.net/gh/donmccurdy/aframe-extras@v7.0.0/dist/aframe-extras.min.js"></script>
   <style>
     body { margin: 0; overflow: hidden; }
-    
-    #status-dot {
-      position: absolute;
-      top: 15px;
-      left: 15px;
-      width: 16px;
-      height: 16px;
-      background-color: #ff0000;
-      border-radius: 50%;
-      border: 2px solid white;
-      z-index: 1000;
-      box-shadow: 0 0 6px rgba(0,0,0,0.4);
-    }
 
     #mic-btn {
       position: absolute;
@@ -42,14 +29,12 @@
 </head>
 <body>
 
-  <div id="status-dot"></div>
-
   <button id="mic-btn">🎙️ Talk to Elf</button>
 
   <a-scene 
     mindar-image="imageTargetSrc: ./card-target.mind; autoStart: true; uiLoading: no; uiError: no;" 
     color-space="sRGB" 
-    renderer="colorManagement: true, physicallyCorrectLights: true" 
+    renderer="colorManagement: true; physicallyCorrectLights: false; exposure: 1.0;" 
     vr-mode-ui="enabled: false" 
     device-orientation-permission-ui="enabled: false">
 
@@ -59,12 +44,18 @@
 
     <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
+    <!-- Balanced lighting setup so the model textures render with full color -->
+    <a-light type="ambient" color="#ffffff" intensity="1.2"></a-light>
+    <a-light type="directional" color="#ffffff" intensity="0.8" position="1 4 3"></a-light>
+    <a-light type="directional" color="#ffffff" intensity="0.4" position="-1 -2 2"></a-light>
+
     <a-entity mindar-image-target="targetIndex: 0">
+      <!-- Rotation 0 0 0 sets the model standing straight up on a flat desk target -->
       <a-gltf-model 
         src="#elf" 
-        position="0 -0.2 0" 
-        scale="0.6 0.6 0.6" 
-        rotation="0 0 0" 
+        position="0 0 0" 
+        scale="0.5 0.5 0.5" 
+        rotation="0 0 0"
         animation-mixer="clip: *; loop: repeat">
       </a-gltf-model>
     </a-entity>
@@ -75,7 +66,9 @@
     const micBtn = document.getElementById('mic-btn');
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
+    let isListening = false;
     let voices = [];
+
     function loadVoices() {
       voices = window.speechSynthesis.getVoices();
     }
@@ -89,11 +82,11 @@
       if (!text) return;
 
       const utterance = new SpeechSynthesisUtterance(text);
-      utterance.pitch = 1.6;
-      utterance.rate = 1.1;
+      utterance.pitch = 1.5;
+      utterance.rate = 1.0;
 
       if (voices.length > 0) {
-        const preferredVoice = voices.find(v => (v.lang.startsWith('en') || v.lang.startsWith('en-GB')) && !v.name.includes('Compact')) || voices[0];
+        const preferredVoice = voices.find(v => v.lang.includes('en')) || voices[0];
         if (preferredVoice) utterance.voice = preferredVoice;
       }
 
@@ -104,19 +97,16 @@
       const q = question.toLowerCase();
 
       if (q.includes('hello') || q.includes('hi') || q.includes('hey')) {
-        return "Greetings! What high-tech workshop calculations can I help you with today?";
+        return "Hello there! Nice to meet you!";
       }
-      if (q.includes('who are you') || q.includes('your name')) {
-        return "I'm the resident North Pole engineer! Part magic, part high-tech ingenuity.";
+      if (q.includes('who are you') || q.includes('name')) {
+        return "I am your desk elf! Ready for action.";
       }
       if (q.includes('santa') || q.includes('christmas')) {
-        return "Santa's workshop is running at peak efficiency! All systems are go.";
-      }
-      if (q.includes('why') || q.includes('how') || q.includes('what') || q.includes('can you')) {
-        return "That's a clever question! According to my North Pole calculations, " + question + " involves some fascinating magic and logic!";
+        return "Santa's workshop is super busy right now!";
       }
       
-      return "Fascinating question! As an elf scientist, I'd say " + question + " is definitely worth investigating!";
+      return "That's awesome! Tell me more about " + question + "!";
     }
 
     if (SpeechRecognition) {
@@ -124,10 +114,12 @@
       recognition.lang = 'en-US';
 
       recognition.onstart = () => { 
+        isListening = true;
         micBtn.innerText = 'Listening...'; 
       };
       
       recognition.onresult = (event) => {
+        isListening = false;
         const text = event.results[0][0].transcript;
         micBtn.innerText = '🎙️ Talk to Elf';
 
@@ -136,15 +128,30 @@
       };
 
       recognition.onerror = () => { 
+        isListening = false;
+        micBtn.innerText = '🎙️ Talk to Elf';
+      };
+
+      recognition.onend = () => {
+        isListening = false;
         micBtn.innerText = '🎙️ Talk to Elf';
       };
 
       micBtn.addEventListener('click', () => { 
-        speakElf("");
-        recognition.start(); 
+        // Unlocks mobile browser audio on tap
+        const unlockAudio = new SpeechSynthesisUtterance('');
+        window.speechSynthesis.speak(unlockAudio);
+
+        if (!isListening) {
+          try {
+            recognition.start();
+          } catch (e) {
+            console.log("Error starting voice:", e);
+          }
+        }
       });
     } else {
-      micBtn.innerText = 'Voice API Not Supported';
+      micBtn.innerText = 'Voice Not Supported on Browser';
     }
   </script>
 </body>
