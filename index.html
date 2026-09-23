@@ -3,25 +3,33 @@
 <head>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Elf AR Experience</title>
+  
+  <!-- A-Frame and MindAR Libraries -->
   <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
   <script src="https://cdn.jsdelivr.net/gh/donmccurdy/aframe-extras@v7.0.0/dist/aframe-extras.min.js"></script>
+
   <style>
     body { margin: 0; overflow: hidden; }
 
-    #mic-btn {
-      position: absolute;
+    #ui-container {
+      position: fixed;
       bottom: 30px;
       left: 50%;
       transform: translateX(-50%);
       z-index: 1000;
-      padding: 14px 28px;
-      font-size: 18px;
+      display: flex;
+      gap: 12px;
+    }
+
+    .ar-btn {
+      padding: 14px 24px;
+      font-size: 16px;
       font-weight: bold;
       color: white;
       background-color: #008cba;
       border: none;
-      border-radius: 50px;
+      border-radius: 30px;
       box-shadow: 0 4px 8px rgba(0,0,0,0.3);
       cursor: pointer;
     }
@@ -29,129 +37,133 @@
 </head>
 <body>
 
-  <button id="mic-btn">🎙️ Talk to Elf</button>
+  <!-- MODE 1: CARD TRACKING -->
+  <div id="card-mode">
+    <a-scene mindar-image="imageTargetSrc: ./card-target.mind;" color-space="sRGB" renderer="colorManagement: true, physicallyCorrectLights" vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false">
+      <a-assets>
+        <a-asset-item id="elf" src="elf-model.glb"></a-asset-item>
+      </a-assets>
 
-  <a-scene 
-    mindar-image="imageTargetSrc: ./card-target.mind; autoStart: true; uiLoading: no; uiError: no;" 
-    color-space="sRGB" 
-    renderer="colorManagement: true; physicallyCorrectLights: false; exposure: 1.0;" 
-    vr-mode-ui="enabled: false" 
-    device-orientation-permission-ui="enabled: false">
+      <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
-    <a-assets>
-      <a-asset-item id="elf" src="./elf-model.glb"></a-asset-item>
-    </a-assets>
+      <a-entity mindar-image-target="targetIndex: 0">
+        <a-gltf-model 
+          src="#elf" 
+          position="0 0 0" 
+          scale="0.5 0.5 0.5" 
+          rotation="0 0 90"
+          animation-mixer="clip: *; loop: repeat">
+        </a-gltf-model>
+      </a-entity>
+    </a-scene>
+  </div>
 
-    <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+  <!-- MODE 2: SQUARE BOUNDARY WALK -->
+  <div id="floor-mode" style="display: none;">
+    <a-scene webxr="optionalFeatures: hit-test" embedded>
+      <a-assets>
+        <a-asset-item id="elf-floor" src="elf-model.glb"></a-asset-item>
+      </a-assets>
 
-    <!-- Balanced lighting setup so the model textures render with full color -->
-    <a-light type="ambient" color="#ffffff" intensity="1.2"></a-light>
-    <a-light type="directional" color="#ffffff" intensity="0.8" position="1 4 3"></a-light>
-    <a-light type="directional" color="#ffffff" intensity="0.4" position="-1 -2 2"></a-light>
+      <a-entity id="reticle" ar-hit-test visible="false">
+        <a-ring rotation="-90 0 0" radius-inner="0.08" radius-outer="0.12" color="#00FF00"></a-ring>
+      </a-entity>
 
-    <a-entity mindar-image-target="targetIndex: 0">
-      <!-- Rotation 0 0 0 sets the model standing straight up on a flat desk target -->
+      <a-box id="square-boundary" position="0 0 0" width="2" height="0.01" depth="2" material="color: #00FF00; wireframe: true" visible="false"></a-box>
+
       <a-gltf-model 
-        src="#elf" 
-        position="0 0 0" 
-        scale="0.5 0.5 0.5" 
-        rotation="90 0 0"
+        id="elf-walker"
+        src="#elf-floor" 
+        scale="0.3 0.3 0.3" 
+        visible="false"
         animation-mixer="clip: *; loop: repeat">
       </a-gltf-model>
-    </a-entity>
 
-  </a-scene>
+      <a-entity camera></a-entity>
+    </a-scene>
+  </div>
 
+  <!-- UI BUTTONS -->
+  <div id="ui-container">
+    <button id="mic-btn" class="ar-btn">🎙️ Talk to Elf</button>
+    <button id="mode-btn" class="ar-btn">📦 Switch to Square Walk</button>
+  </div>
+
+  <!-- JAVASCRIPT CODE INCLUDED DIRECTLY HERE -->
   <script>
-    const micBtn = document.getElementById('mic-btn');
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    let mode = 'card';
+    const modeBtn = document.getElementById('mode-btn');
+    const cardMode = document.getElementById('card-mode');
+    const floorMode = document.getElementById('floor-mode');
 
-    let isListening = false;
-    let voices = [];
+    const reticle = document.getElementById('reticle');
+    const elfWalker = document.getElementById('elf-walker');
+    const boundaryBox = document.getElementById('square-boundary');
 
-    function loadVoices() {
-      voices = window.speechSynthesis.getVoices();
-    }
-    loadVoices();
-    if (speechSynthesis.onvoiceschanged !== undefined) {
-      speechSynthesis.onvoiceschanged = loadVoices;
-    }
+    let isPlaced = false;
+    let squareCenter = { x: 0, z: 0 };
+    const HALF_SIZE = 0.9;
 
-    function speakElf(text) {
-      window.speechSynthesis.cancel();
-      if (!text) return;
-
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.pitch = 1.5;
-      utterance.rate = 1.0;
-
-      if (voices.length > 0) {
-        const preferredVoice = voices.find(v => v.lang.includes('en')) || voices[0];
-        if (preferredVoice) utterance.voice = preferredVoice;
+    // Mode Toggle Logic
+    modeBtn.addEventListener('click', () => {
+      if (mode === 'card') {
+        mode = 'floor';
+        cardMode.style.display = 'none';
+        floorMode.style.display = 'block';
+        modeBtn.textContent = '🃏 Switch to Card Mode';
+      } else {
+        mode = 'card';
+        floorMode.style.display = 'none';
+        cardMode.style.display = 'block';
+        modeBtn.textContent = '📦 Switch to Square Walk';
       }
+    });
 
-      window.speechSynthesis.speak(utterance);
+    // Floor Detection Logic
+    const floorScene = floorMode.querySelector('a-scene');
+    floorScene.addEventListener('click', () => {
+      if (mode === 'floor' && !isPlaced && reticle && reticle.getAttribute('visible')) {
+        const pos = reticle.getAttribute('position');
+
+        elfWalker.setAttribute('position', pos);
+        elfWalker.setAttribute('visible', 'true');
+
+        boundaryBox.setAttribute('position', `${pos.x} ${pos.y + 0.01} ${pos.z}`);
+        boundaryBox.setAttribute('visible', 'true');
+
+        squareCenter = { x: pos.x, z: pos.z, y: pos.y };
+        isPlaced = true;
+
+        startSquareWalk();
+      }
+    });
+
+    function getNextSquareWaypoint() {
+      const randomX = squareCenter.x + (Math.random() * (HALF_SIZE * 2) - HALF_SIZE);
+      const randomZ = squareCenter.z + (Math.random() * (HALF_SIZE * 2) - HALF_SIZE);
+      return { x: randomX, z: randomZ };
     }
 
-    function getSmartElfResponse(question) {
-      const q = question.toLowerCase();
+    function startSquareWalk() {
+      setInterval(() => {
+        if (!isPlaced || mode !== 'floor') return;
 
-      if (q.includes('hello') || q.includes('hi') || q.includes('hey')) {
-        return "Hello there! Nice to meet you!";
-      }
-      if (q.includes('who are you') || q.includes('name')) {
-        return "I am your desk elf! Ready for action.";
-      }
-      if (q.includes('santa') || q.includes('christmas')) {
-        return "Santa's workshop is super busy right now!";
-      }
-      
-      return "That's awesome! Tell me more about " + question + "!";
-    }
+        const currentPos = elfWalker.getAttribute('position');
+        const target = getNextSquareWaypoint();
 
-    if (SpeechRecognition) {
-      const recognition = new SpeechRecognition();
-      recognition.lang = 'en-US';
+        const dx = target.x - currentPos.x;
+        const dz = target.z - currentPos.z;
+        const angleY = (Math.atan2(dx, dz) * 180) / Math.PI;
 
-      recognition.onstart = () => { 
-        isListening = true;
-        micBtn.innerText = 'Listening...'; 
-      };
-      
-      recognition.onresult = (event) => {
-        isListening = false;
-        const text = event.results[0][0].transcript;
-        micBtn.innerText = '🎙️ Talk to Elf';
+        elfWalker.setAttribute('rotation', `0 ${angleY} 0`);
 
-        const reply = getSmartElfResponse(text);
-        speakElf(reply);
-      };
-
-      recognition.onerror = () => { 
-        isListening = false;
-        micBtn.innerText = '🎙️ Talk to Elf';
-      };
-
-      recognition.onend = () => {
-        isListening = false;
-        micBtn.innerText = '🎙️ Talk to Elf';
-      };
-
-      micBtn.addEventListener('click', () => { 
-        // Unlocks mobile browser audio on tap
-        const unlockAudio = new SpeechSynthesisUtterance('');
-        window.speechSynthesis.speak(unlockAudio);
-
-        if (!isListening) {
-          try {
-            recognition.start();
-          } catch (e) {
-            console.log("Error starting voice:", e);
-          }
-        }
-      });
-    } else {
-      micBtn.innerText = 'Voice Not Supported on Browser';
+        elfWalker.setAttribute('animation', {
+          property: 'position',
+          to: `${target.x} ${squareCenter.y} ${target.z}`,
+          dur: 3500,
+          easing: 'linear'
+        });
+      }, 4500);
     }
   </script>
 </body>
