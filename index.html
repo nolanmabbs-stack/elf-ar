@@ -1,72 +1,4 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Elf AR Experience</title>
-  
-  <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
-  <script src="https://cdn.jsdelivr.net/gh/donmccurdy/aframe-extras@v7.0.0/dist/aframe-extras.min.js"></script>
-
-  <style>
-    body { margin: 0; overflow: hidden; }
-
-    #ui-container {
-      position: fixed;
-      bottom: 30px;
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: 1000;
-      display: flex;
-      gap: 12px;
-    }
-
-    .ar-btn {
-      padding: 14px 24px;
-      font-size: 16px;
-      font-weight: bold;
-      color: white;
-      background-color: #008cba;
-      border: none;
-      border-radius: 30px;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.3);
-      cursor: pointer;
-    }
-  </style>
-</head>
-<body>
-
-  <a-scene mindar-image="imageTargetSrc: ./card-target.mind;" color-space="sRGB" renderer="colorManagement: true, physicallyCorrectLights" vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false">
-    <a-assets>
-      <a-asset-item id="elf" src="elf-model.glb"></a-asset-item>
-    </a-assets>
-
-    <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
-
-    <a-entity mindar-image-target="targetIndex: 0">
-      
-      <!-- Visual Boundary Box on the Card Surface -->
-      <a-box id="boundary-box" position="0 0 0" width="1.5" height="0.01" depth="1.5" material="color: #00FF00; wireframe: true" visible="false"></a-box>
-
-      <!-- The Elf Character -->
-      <a-gltf-model 
-        id="elf-model"
-        src="#elf" 
-        position="0 0 0" 
-        scale="0.5 0.5 0.5" 
-        rotation="90 0 0"
-        animation-mixer="clip: *; loop: repeat">
-      </a-gltf-model>
-
-    </a-entity>
-  </a-scene>
-
-  <div id="ui-container">
-    <button id="mic-btn" class="ar-btn">🎙️ Talk to Elf</button>
-    <button id="mode-btn" class="ar-btn">📦 Start Boundary Walk</button>
-  </div>
-
-  <script>
+<script>
     let isWalking = false;
     let walkInterval = null;
     const modeBtn = document.getElementById('mode-btn');
@@ -82,34 +14,66 @@
         modeBtn.textContent = '🃏 Return to Center';
         startBoundaryWandering();
       } else {
-        boundaryBox.setAttribute('visible', 'false');
-        modeBtn.textContent = '📦 Start Boundary Walk';
-        clearInterval(walkInterval);
-        
-        // Reset to original standing position on card
-        elf.setAttribute('position', '0 0 0');
-        elf.setAttribute('rotation', '0 0 90');
+        stopBoundaryWandering();
       }
     });
 
-    // Pick random spot inside 1.5x1.5 boundary box
+    function stopBoundaryWandering() {
+      isWalking = false;
+      clearInterval(walkInterval);
+      walkInterval = null;
+
+      // Remove any active position/rotation animation components to prevent glitching
+      elf.removeAttribute('animation');
+      elf.removeAttribute('animation__rotate');
+
+      boundaryBox.setAttribute('visible', 'false');
+      modeBtn.textContent = '📦 Start Boundary Walk';
+
+      // Snap cleanly back to center standing position
+      elf.setAttribute('position', '0 0 0');
+      elf.setAttribute('rotation', '0 0 90');
+    }
+
     function startBoundaryWandering() {
+      // Run first step immediately
+      walkNextStep();
+
+      // Repeat movement loop
       walkInterval = setInterval(() => {
         if (!isWalking) return;
-
-        // Random target coordinates inside boundary
-        const randomX = (Math.random() * 1.2) - 0.6;
-        const randomY = (Math.random() * 1.2) - 0.6;
-
-        // Smooth movement animation inside MindAR coordinate space
-        elf.setAttribute('animation', {
-          property: 'position',
-          to: `${randomX} ${randomY} 0`,
-          dur: 3000,
-          easing: 'linear'
-        });
+        walkNextStep();
       }, 4000);
     }
+
+    function walkNextStep() {
+      const currentPos = elf.getAttribute('position');
+      
+      // Random target coordinates inside boundary box
+      const targetX = (Math.random() * 1.0) - 0.5;
+      const targetY = (Math.random() * 1.0) - 0.5;
+
+      const dx = targetX - currentPos.x;
+      const dy = targetY - currentPos.y;
+
+      // Calculate 2D direction angle on card plane
+      const angleRad = Math.atan2(dy, dx);
+      let angleDeg = (angleRad * 180) / Math.PI;
+
+      // Turn model smoothly toward destination along Z-axis while preserving standing tilt
+      elf.setAttribute('animation__rotate', {
+        property: 'rotation',
+        to: `0 0 ${angleDeg + 90}`,
+        dur: 500,
+        easing: 'easeOutQuad'
+      });
+
+      // Move smoothly to target location
+      elf.setAttribute('animation', {
+        property: 'position',
+        to: `${targetX} ${targetY} 0`,
+        dur: 3000,
+        easing: 'linear'
+      });
+    }
   </script>
-</body>
-</html>
