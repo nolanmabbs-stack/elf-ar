@@ -4,6 +4,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Elf AR Experience</title>
   
+  <!-- A-Frame and MindAR Libraries -->
   <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
   <script src="https://cdn.jsdelivr.net/gh/donmccurdy/aframe-extras@v7.0.0/dist/aframe-extras.min.js"></script>
@@ -48,7 +49,7 @@
       <!-- Boundary Wireframe Box -->
       <a-box id="boundary-box" position="0 0 0" width="1.5" height="0.01" depth="1.5" material="color: #00FF00; wireframe: true" visible="false"></a-box>
 
-      <!-- Parent Wrapper to handle Position and Yaw Direction -->
+      <!-- Parent Wrapper to handle Position and Rotation -->
       <a-entity id="elf-container" position="0 0 0" rotation="0 0 0">
         
         <!-- Child Elf Model locked in upright posture -->
@@ -97,14 +98,14 @@
         walkInterval = null;
       }
 
-      // Clear all active animations on the container
+      // Clear all active movement and rotation animations
       container.removeAttribute('animation');
       container.removeAttribute('animation__rotate');
 
       boundaryBox.setAttribute('visible', 'false');
       modeBtn.textContent = '📦 Start Boundary Walk';
 
-      // Instantly snap container back to standing center facing forward
+      // Snap container back to standing center position facing forward
       container.setAttribute('position', '0 0 0');
       container.setAttribute('rotation', '0 0 0');
     }
@@ -133,10 +134,10 @@
       const angleRad = Math.atan2(dy, dx);
       let angleDeg = (angleRad * 180) / Math.PI;
 
-      // Rotate parent container around Z-axis without tilting elf standing angle
+      // Turn parent container to face forward (+90 degrees offset)
       container.setAttribute('animation__rotate', {
         property: 'rotation',
-        to: `0 0 ${angleDeg - 90}`,
+        to: `0 0 ${angleDeg + 90}`,
         dur: 400,
         easing: 'easeOutQuad'
       });
