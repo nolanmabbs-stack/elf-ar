@@ -134,10 +134,10 @@
       const angleRad = Math.atan2(dy, dx);
       let angleDeg = (angleRad * 180) / Math.PI;
 
-      // Turn parent container to face forward (+90 degrees offset)
+      // Turn parent container to face forward (-90 degrees offset)
       container.setAttribute('animation__rotate', {
         property: 'rotation',
-        to: `0 0 ${angleDeg + 90}`,
+        to: `0 0 ${angleDeg - 90}`,
         dur: 400,
         easing: 'easeOutQuad'
       });
