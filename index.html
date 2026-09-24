@@ -48,15 +48,20 @@
       <!-- Boundary Wireframe Box -->
       <a-box id="boundary-box" position="0 0 0" width="1.5" height="0.01" depth="1.5" material="color: #00FF00; wireframe: true" visible="false"></a-box>
 
-      <!-- The Elf Model -->
-      <a-gltf-model 
-        id="elf-model"
-        src="#elf" 
-        position="0 0 0" 
-        scale="0.5 0.5 0.5" 
-        rotation="90 0 0"
-        animation-mixer="clip: *; loop: repeat">
-      </a-gltf-model>
+      <!-- Parent Wrapper to handle Position and Yaw Direction -->
+      <a-entity id="elf-container" position="0 0 0" rotation="0 0 0">
+        
+        <!-- Child Elf Model locked in upright posture -->
+        <a-gltf-model 
+          id="elf-model"
+          src="#elf" 
+          position="0 0 0" 
+          scale="0.5 0.5 0.5" 
+          rotation="90 0 0"
+          animation-mixer="clip: *; loop: repeat">
+        </a-gltf-model>
+
+      </a-entity>
 
     </a-entity>
   </a-scene>
@@ -70,7 +75,7 @@
     let isWalking = false;
     let walkInterval = null;
     const modeBtn = document.getElementById('mode-btn');
-    const elf = document.getElementById('elf-model');
+    const container = document.getElementById('elf-container');
     const boundaryBox = document.getElementById('boundary-box');
 
     modeBtn.addEventListener('click', () => {
@@ -92,16 +97,16 @@
         walkInterval = null;
       }
 
-      // Stop all active animations immediately
-      elf.removeAttribute('animation');
-      elf.removeAttribute('animation__rotate');
+      // Clear all active animations on the container
+      container.removeAttribute('animation');
+      container.removeAttribute('animation__rotate');
 
       boundaryBox.setAttribute('visible', 'false');
       modeBtn.textContent = '📦 Start Boundary Walk';
 
-      // Snap back to standing center position
-      elf.setAttribute('position', '0 0 0');
-      elf.setAttribute('rotation', '0 0 90');
+      // Instantly snap container back to standing center facing forward
+      container.setAttribute('position', '0 0 0');
+      container.setAttribute('rotation', '0 0 0');
     }
 
     function startBoundaryWandering() {
@@ -115,28 +120,29 @@
     function walkNextStep() {
       if (!isWalking) return;
 
-      const currentPos = elf.getAttribute('position') || { x: 0, y: 0, z: 0 };
+      const currentPos = container.getAttribute('position') || { x: 0, y: 0, z: 0 };
       
-      // Target coordinates inside boundary
+      // Target coordinates inside boundary box
       const targetX = (Math.random() * 1.0) - 0.5;
       const targetY = (Math.random() * 1.0) - 0.5;
 
       const dx = targetX - currentPos.x;
       const dy = targetY - currentPos.y;
 
-      // Turn model smoothly toward destination angle
+      // Calculate direction angle across the card plane
       const angleRad = Math.atan2(dy, dx);
       let angleDeg = (angleRad * 180) / Math.PI;
 
-      elf.setAttribute('animation__rotate', {
+      // Rotate parent container around Z-axis without tilting elf standing angle
+      container.setAttribute('animation__rotate', {
         property: 'rotation',
-        to: `0 0 ${angleDeg + 90}`,
+        to: `0 0 ${angleDeg - 90}`,
         dur: 400,
         easing: 'easeOutQuad'
       });
 
-      // Move smoothly to new target position
-      elf.setAttribute('animation', {
+      // Move parent container smoothly across the card
+      container.setAttribute('animation', {
         property: 'position',
         to: `${targetX} ${targetY} 0`,
         dur: 3000,
