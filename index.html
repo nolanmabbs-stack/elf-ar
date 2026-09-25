@@ -45,67 +45,20 @@
     <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
     <a-entity mindar-image-target="targetIndex: 0">
-      <!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Elf AR Experience</title>
-  
-  <!-- A-Frame and MindAR Libraries -->
-  <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
-  <script src="https://cdn.jsdelivr.net/gh/donmccurdy/aframe-extras@v7.0.0/dist/aframe-extras.min.js"></script>
-
-  <style>
-    body { margin: 0; overflow: hidden; }
-
-    #ui-container {
-      position: fixed;
-      bottom: 30px;
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: 1000;
-      display: flex;
-      gap: 12px;
-    }
-
-    .ar-btn {
-      padding: 14px 24px;
-      font-size: 16px;
-      font-weight: bold;
-      color: white;
-      background-color: #008cba;
-      border: none;
-      border-radius: 30px;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.3);
-      cursor: pointer;
-    }
-  </style>
-</head>
-<body>
-
-  <a-scene mindar-image="imageTargetSrc: ./card-target.mind;" color-space="sRGB" renderer="colorManagement: true, physicallyCorrectLights" vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false">
-    <a-assets>
-      <a-asset-item id="elf" src="elf-model.glb"></a-asset-item>
-    </a-assets>
-
-    <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
-
-    <a-entity mindar-image-target="targetIndex: 0">
       
       <!-- Boundary Wireframe Box -->
       <a-box id="boundary-box" position="0 0 0" width="1.5" height="0.01" depth="1.5" material="color: #00FF00; wireframe: true" visible="false"></a-box>
 
-      <!-- Parent Wrapper to handle Position and Rotation -->
-      <a-entity id="elf-container" position="0 0 0" rotation="0 0 0">
+      <!-- Container handles Position and Rotation cleanly -->
+      <a-entity id="elf-container" position="0 0 0" rotation="90 0 0">
         
-        <!-- Child Elf Model flipped 180 degrees on Y to face front -->
+        <!-- GLTF Model reset to base rotation -->
         <a-gltf-model 
           id="elf-model"
           src="#elf" 
           position="0 0 0" 
           scale="0.5 0.5 0.5" 
-          rotation="90 180 0"
+          rotation="0 0 0"
           animation-mixer="clip: *; loop: repeat">
         </a-gltf-model>
 
@@ -152,9 +105,9 @@
       boundaryBox.setAttribute('visible', 'false');
       modeBtn.textContent = '📦 Start Boundary Walk';
 
-      // Snap container back to standing center position facing forward
+      // Reset back to center and initial standing rotation
       container.setAttribute('position', '0 0 0');
-      container.setAttribute('rotation', '0 0 0');
+      container.setAttribute('rotation', '90 0 0');
     }
 
     function startBoundaryWandering() {
@@ -181,15 +134,15 @@
       const angleRad = Math.atan2(dy, dx);
       let angleDeg = (angleRad * 180) / Math.PI;
 
-      // Turn parent container to point towards movement vector
+      // Rotate container on Z while preserving standing 90deg tilt on X
       container.setAttribute('animation__rotate', {
         property: 'rotation',
-        to: `0 0 ${angleDeg + 90}`,
+        to: `90 0 ${angleDeg - 90}`,
         dur: 400,
         easing: 'easeOutQuad'
       });
 
-      // Move parent container smoothly across the card
+      // Move container smoothly to target
       container.setAttribute('animation', {
         property: 'position',
         to: `${targetX} ${targetY} 0`,
